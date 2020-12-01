@@ -44,54 +44,30 @@ function distanceCalculator(lat1, lon1, lat2, lon2, unit) {
 
 
 module.exports.handler = async (event, context, callback) => {
-  let zipcodeArr = require("./data.json");
-	let queryString = (event['queryStringParameters'] != null)?event['queryStringParameters']:{};
-	let resultedData = [];
+	let zipcodeArr = require("./../data.json");
+	// If method is post then bodyobject will be initialize with body. if it is get method then it will use query string.
+	let bodyObj = (event['body'] != null)?event['body']:(event['queryStringParameters'] != null)?event['queryStringParameters']:{};
 	let returnedData = {};
 	
-	
-	if(typeof queryString['enteredValue'] != "undefined"){
-		switch(queryString['searchType']){
-			case 'population':
-				resultedData = zipcodeArr.filter(elem => {
-					return (elem['estimated_population'] == queryString['enteredValue'])
-				});
-				returnedData = {'success':true, 'data':resultedData};
-				break;
-			case 'zip':
-				resultedData = zipcodeArr.filter(elem => {
-					return (elem['zip'].indexOf(queryString['enteredValue']) != -1)
-				});
-				returnedData = {'success':true, 'data':resultedData};
-				break;
-			case 'city':
-				resultedData = zipcodeArr.filter(elem => {
-					return (elem['primary_city'].indexOf(queryString['enteredValue']) != -1)
-				});
-				returnedData = {'success':true, 'data':resultedData};
-				break;
-			case 'distance':
-				if(typeof queryString['latitude'] != "undefined" && typeof queryString['longitude'] != "undefined"){
-					resultedData = zipcodeArr.filter(elem => {
-						let  distance = distanceCalculator(queryString['latitude'], queryString['longitude'], elem['latitude'], elem['longitude'], 'K');
-						console.log(distance);
-						return distance < parseInt(queryString['enteredValue']);
-					});
-					returnedData = {'success':true, 'data':resultedData};
-				}
-				else{
-					returnedData = {'success':false, 'error':"latitude and longitude is also required while using distance search type"};
-				}
-				break;
-			
-			default:
-				returnedData = {'success':false, error:'no valid search type'};
+	let resultedData = zipcodeArr.filter(elem => {
+		let included = true;
+		if(typeof bodyObj['population'] != "undefined" && bodyObj['population'] != "" && !isNaN(bodyObj['population'])){
+			included = (parseInt(elem['estimated_population']) < parseInt(bodyObj['population']));
 		}
-	}
-	else{
-		returnedData = {'success':false, 'error':'enteredValue is required.'};
-	}
-
+		if(typeof bodyObj['zip'] != "undefined" && bodyObj['zip'] != ""){
+			included = (elem['zip'].indexOf(bodyObj['zip']) != -1);
+		}
+		if(typeof bodyObj['city'] != "unddefined" && bodyObj['city'] != ""){
+			included = (elem['primary_city'].indexOf(bodyObj['city']) != -1)
+		}
+		if(typeof bodyObj['distance'] != "undefined" && typeof bodyObj['latitude'] != "undefined" && typeof bodyObj['longitude'] != "undefined"){
+			let  distance = distanceCalculator(bodyObj['latitude'], bodyObj['longitude'], elem['latitude'], elem['longitude'], 'K');
+			included = distance < parseInt(bodyObj['distance']);
+			
+		}
+		return included;
+	});
+	returnedData = {'success':true, 'data':resultedData};
 	let returnValue = returnValFunc(200 , returnedData);
-	callback(null,returnValue);
+	callback(null,returnValue);	
 };
