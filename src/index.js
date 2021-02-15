@@ -42,6 +42,25 @@ function distanceCalculator(lat1, lon1, lat2, lon2, unit) {
 	}
 }
 
+function applyFilter(elem, body){
+	let include = true;
+	if(typeof bodyObj['population'] != "undefined" && bodyObj['population'] != "" && !isNaN(bodyObj['population'])){
+		included = (parseInt(elem['estimated_population']) < parseInt(bodyObj['population']));
+	}
+	if(typeof bodyObj['zip'] != "undefined" && bodyObj['zip'] != ""){
+		included = (elem['zip'].indexOf(bodyObj['zip']) != -1);
+	}
+	if(typeof bodyObj['city'] != "unddefined" && bodyObj['city'] != ""){
+		included = (elem['primary_city'].indexOf(bodyObj['city']) != -1)
+	}
+	if(typeof bodyObj['distance'] != "undefined" && typeof bodyObj['latitude'] != "undefined" && typeof bodyObj['longitude'] != "undefined"){
+		let  distance = distanceCalculator(bodyObj['latitude'], bodyObj['longitude'], elem['latitude'], elem['longitude'], 'K');
+		included = distance < parseInt(bodyObj['distance']);
+		
+	}
+	return include;
+}
+
 
 module.exports.handler = async (event, context, callback) => {
 	let zipcodeArr = require("./../data.json");
@@ -50,22 +69,8 @@ module.exports.handler = async (event, context, callback) => {
 	let returnedData = {};
 	
 	let resultedData = zipcodeArr.filter(elem => {
-		let included = true;
-		if(typeof bodyObj['population'] != "undefined" && bodyObj['population'] != "" && !isNaN(bodyObj['population'])){
-			included = (parseInt(elem['estimated_population']) < parseInt(bodyObj['population']));
-		}
-		if(typeof bodyObj['zip'] != "undefined" && bodyObj['zip'] != ""){
-			included = (elem['zip'].indexOf(bodyObj['zip']) != -1);
-		}
-		if(typeof bodyObj['city'] != "unddefined" && bodyObj['city'] != ""){
-			included = (elem['primary_city'].indexOf(bodyObj['city']) != -1)
-		}
-		if(typeof bodyObj['distance'] != "undefined" && typeof bodyObj['latitude'] != "undefined" && typeof bodyObj['longitude'] != "undefined"){
-			let  distance = distanceCalculator(bodyObj['latitude'], bodyObj['longitude'], elem['latitude'], elem['longitude'], 'K');
-			included = distance < parseInt(bodyObj['distance']);
-			
-		}
-		return included;
+		return applyFilter(elem, bodyObj);
+		
 	});
 	returnedData = {'success':true, 'data':resultedData};
 	let returnValue = returnValFunc(200 , returnedData);
